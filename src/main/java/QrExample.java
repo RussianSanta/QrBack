@@ -1,4 +1,5 @@
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
@@ -16,6 +17,11 @@ public class QrExample {
         }
 
         new QrProvider().createQrCode(data, 300, "png");
+
+        File f = new File("qr.png");
+        System.out.println(f.length());
+        System.out.println(f.getTotalSpace());
+
         System.out.println("done.");
     }
 }
