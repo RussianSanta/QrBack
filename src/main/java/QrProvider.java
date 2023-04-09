@@ -4,7 +4,6 @@ import com.google.zxing.common.BitMatrix;
 import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
-import com.google.zxing.qrcode.encoder.Encoder;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -19,23 +18,22 @@ import java.util.Collections;
 import java.util.Hashtable;
 
 public class QrProvider {
-    private static final File logoFile = new File("src/main/resources/img.png");
+    private static final File logoFile = new File("src/main/resources/img.jpg");
     private static FileOutputStream resultStream;
 
-    static {
+    public static BufferedImage createQrCode(String content, int qrCodeSize, String imageFormat, String fileName) {
         try {
-            resultStream = new FileOutputStream("qr.png");
+            resultStream = new FileOutputStream(fileName);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
-    }
 
-    public void createQrCode(String content, int qrCodeSize, String imageFormat){
         try {
             // Correction level - HIGH - more chances to recover message
-            Hashtable<EncodeHintType, ErrorCorrectionLevel> hintMap =
-                    new Hashtable<EncodeHintType, ErrorCorrectionLevel>();
+            Hashtable<EncodeHintType, Object> hintMap =
+                    new Hashtable<>();
             hintMap.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.H);
+            hintMap.put(EncodeHintType.CHARACTER_SET, "windows-1251");
 
             // Generate QR-code
             QRCodeWriter qrCodeWriter = new QRCodeWriter();
@@ -55,7 +53,7 @@ public class QrProvider {
             Color mainColor = new Color(30, 70, 153);
             graphics.setColor(mainColor);
             // Write message under the QR-code
-            graphics.drawString( content, 30, image.getHeight() - graphics.getFont().getSize());
+            graphics.drawString(content, 30, image.getHeight() - graphics.getFont().getSize());
 
             //Write Bit Matrix as image
             for (int i = 0; i < matrixWidth; i++) {
@@ -71,33 +69,37 @@ public class QrProvider {
 
             //scale logo image and insert it to center of QR-code
             double scale = calcScaleRate(image, logo);
-            logo = getScaledImage( logo,
-                    (int)( logo.getWidth() * scale),
-                    (int)( logo.getHeight() * scale) );
-            graphics.drawImage( logo,
-                    image.getWidth()/2 - logo.getWidth()/2,
-                    image.getHeight()/2 - logo.getHeight()/2,
-                    image.getWidth()/2 + logo.getWidth()/2,
-                    image.getHeight()/2 + logo.getHeight()/2,
+            logo = getScaledImage(logo,
+                    (int) (logo.getWidth() * scale),
+                    (int) (logo.getHeight() * scale));
+            graphics.drawImage(logo,
+                    image.getWidth() / 2 - logo.getWidth() / 2,
+                    image.getHeight() / 2 - logo.getHeight() / 2,
+                    image.getWidth() / 2 + logo.getWidth() / 2,
+                    image.getHeight() / 2 + logo.getHeight() / 2,
                     0, 0, logo.getWidth(), logo.getHeight(), null);
 
+            ImageIO.write(image, imageFormat, resultStream);
+            //todo проверить, почему не работает проверка
+
             // Check correctness of QR-code
-            if (isQRCodeCorrect(content, image)) {
-                ImageIO.write(image, imageFormat, resultStream);
-                System.out.println("Your QR-code was succesfully generated.");
-            } else {
-                System.out.println("Sorry, your logo has broke QR-code. ");
-            }
-        }
-        catch (Exception ex) {
+//            if (isQRCodeCorrect(content, image)) {
+//                ImageIO.write(image, imageFormat, resultStream);
+//                System.out.println("Your QR-code was succesfully generated.");
+//            } else {
+//                System.out.println("Sorry, your logo has broke QR-code. ");
+//            }
+            return image;
+        } catch (Exception ex) {
             System.out.println(ex.getMessage());
             ex.printStackTrace();
         }
+        return null;
     }
 
-    private double calcScaleRate(BufferedImage image, BufferedImage logo){
+    private static double calcScaleRate(BufferedImage image, BufferedImage logo) {
         double scaleRate = (double) logo.getWidth() / (double) image.getWidth();
-        if (scaleRate > 0.3){
+        if (scaleRate > 0.3) {
             scaleRate = 0.3;
         } else {
             scaleRate = 1;
@@ -105,16 +107,16 @@ public class QrProvider {
         return scaleRate;
     }
 
-    private boolean isQRCodeCorrect(String content, BufferedImage image){
+    private static boolean isQRCodeCorrect(String content, BufferedImage image) {
         boolean result = false;
         Result qrResult = decode(image);
-        if (qrResult != null && content != null && content.equals(qrResult.getText())){
+        if (qrResult != null && content != null && content.equals(qrResult.getText())) {
             result = true;
         }
         return result;
     }
 
-    private Result decode(BufferedImage image){
+    private static Result decode(BufferedImage image) {
         if (image == null) {
             return null;
         }
@@ -129,12 +131,12 @@ public class QrProvider {
         }
     }
 
-    private BufferedImage getScaledImage(BufferedImage image, int width, int height) throws IOException {
-        int imageWidth  = image.getWidth();
+    private static BufferedImage getScaledImage(BufferedImage image, int width, int height) throws IOException {
+        int imageWidth = image.getWidth();
         int imageHeight = image.getHeight();
 
-        double scaleX = (double)width/imageWidth;
-        double scaleY = (double)height/imageHeight;
+        double scaleX = (double) width / imageWidth;
+        double scaleY = (double) height / imageHeight;
         AffineTransform scaleTransform = AffineTransform.getScaleInstance(scaleX, scaleY);
         AffineTransformOp bilinearScaleOp = new AffineTransformOp(
                 scaleTransform, AffineTransformOp.TYPE_BILINEAR);
