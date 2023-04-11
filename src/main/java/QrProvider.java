@@ -53,7 +53,6 @@ public class QrProvider {
             Color mainColor = new Color(30, 70, 153);
             graphics.setColor(mainColor);
             // Write message under the QR-code
-            graphics.drawString(content, 30, image.getHeight() - graphics.getFont().getSize());
 
             //Write Bit Matrix as image
             for (int i = 0; i < matrixWidth; i++) {
