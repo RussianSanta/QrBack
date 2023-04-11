@@ -1,17 +1,25 @@
+import org.jcodec.api.FrameGrab;
+import org.jcodec.api.JCodecException;
 import org.jcodec.api.awt.AWTSequenceEncoder;
+import org.jcodec.common.io.NIOUtils;
+import org.jcodec.common.model.Picture;
+import org.jcodec.scale.AWTUtil;
 
 import java.awt.image.BufferedImage;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 
 public class DataHandler {
     public static void toMyFormat(File file) throws IOException {
         ArrayList<String> dataSets = prepareData(file);
-        ArrayList<BufferedImage> images = convertToImages(dataSets);
-        collectToVideo  (images);
+        ArrayList<BufferedImage> images = convertDataToImages(dataSets);
+        collectToVideo(images);
+    }
+
+    public static void fromMyFormat(File file) throws JCodecException, IOException {
+        ArrayList<BufferedImage> images = cutTheVideo(file);
+        ArrayList<String> dataSets = convertImagesToData(images);
+        collectToFile(dataSets);
     }
 
     private static ArrayList<String> prepareData(File file) {
@@ -40,7 +48,7 @@ public class DataHandler {
         return dataSets;
     }
 
-    private static ArrayList<BufferedImage> convertToImages(ArrayList<String> dataSets) {
+    private static ArrayList<BufferedImage> convertDataToImages(ArrayList<String> dataSets) {
         ArrayList<BufferedImage> images = new ArrayList<>();
         for (String s : dataSets) {
             String fileName = "result/qr" + dataSets.indexOf(s) + ".png";
@@ -61,5 +69,42 @@ public class DataHandler {
 
         }
         encoder.finish();
+    }
+
+    private static ArrayList<BufferedImage> cutTheVideo(File file) throws IOException, JCodecException {
+        ArrayList<BufferedImage> images = new ArrayList<>();
+
+        FrameGrab grab = FrameGrab.createFrameGrab(NIOUtils.readableChannel(file));
+        Picture picture;
+        while (null != (picture = grab.getNativeFrame())) {
+            BufferedImage bufferedImage = AWTUtil.toBufferedImage(picture);
+            images.add(bufferedImage);
+        }
+
+        return images;
+    }
+
+    private static ArrayList<String> convertImagesToData(ArrayList<BufferedImage> images) {
+        ArrayList<String> dataSets = new ArrayList<>();
+
+        for (BufferedImage image : images) {
+            String decodeResult = QrProvider.decode(image).getText();
+            dataSets.add(decodeResult);
+        }
+
+        return dataSets;
+    }
+
+    private static void collectToFile(ArrayList<String> dataSets) {
+        StringBuilder builder = new StringBuilder();
+        for (String s : dataSets) {
+            builder.append(s);
+        }
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter("src/main/resources/result.txt"))) {
+            bw.write(builder.toString());
+        } catch (IOException ex) {
+
+            System.out.println(ex.getMessage());
+        }
     }
 }

@@ -115,7 +115,7 @@ public class QrProvider {
         return result;
     }
 
-    private static Result decode(BufferedImage image) {
+    public static Result decode(BufferedImage image) {
         if (image == null) {
             return null;
         }
