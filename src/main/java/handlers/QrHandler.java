@@ -1,3 +1,5 @@
+package handlers;
+
 import com.google.zxing.*;
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
 import com.google.zxing.common.BitMatrix;
@@ -17,7 +19,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Hashtable;
 
-public class QrProvider {
+public class QrHandler {
     private static final File logoFile = new File("src/main/resources/img.jpg");
     private static FileOutputStream resultStream;
 

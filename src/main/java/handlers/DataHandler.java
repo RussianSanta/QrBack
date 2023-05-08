@@ -1,3 +1,5 @@
+package handlers;
+
 import org.jcodec.api.FrameGrab;
 import org.jcodec.api.JCodecException;
 import org.jcodec.api.awt.AWTSequenceEncoder;
@@ -58,7 +60,7 @@ public class DataHandler {
         ArrayList<BufferedImage> images = new ArrayList<>();
         for (String s : dataSets) {
             String fileName = "result/qr" + dataSets.indexOf(s) + ".png";
-            images.add(QrProvider.createQrCode(s, 300, "png", fileName));
+            images.add(QrHandler.createQrCode(s, 300, "png", fileName));
         }
         return images;
     }
@@ -94,16 +96,22 @@ public class DataHandler {
         ArrayList<String> dataSets = new ArrayList<>();
         Set<Integer> collectedDataSets = new HashSet<>();
         int countOfDataSets = -1;
-        int numberOfDataSet = -1;
+        int numberOfDataSet;
 
         for (BufferedImage image : images) {
-            String decodeResult = QrProvider.decode(image).getText();
-            countOfDataSets = Integer.parseInt(decodeResult.substring(0, 6));
-            fileExtension = decodeResult.substring(6, 12);
-            fileExtension = fileExtension.replaceAll(" ", "");
-            numberOfDataSet = Integer.parseInt(decodeResult.substring(12, 18));
-            collectedDataSets.add(numberOfDataSet);
-            dataSets.add(decodeResult);
+            String decodeResult;
+            try {
+                decodeResult = QrHandler.decode(image).getText();
+                if (decodeResult == null) continue;
+                countOfDataSets = Integer.parseInt(decodeResult.substring(0, 6));
+                fileExtension = decodeResult.substring(6, 12);
+                fileExtension = fileExtension.replaceAll(" ", "");
+                numberOfDataSet = Integer.parseInt(decodeResult.substring(12, 18));
+                collectedDataSets.add(numberOfDataSet);
+                dataSets.add(decodeResult);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
         if (countOfDataSets != collectedDataSets.size()) {
@@ -122,7 +130,6 @@ public class DataHandler {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(resultFileName))) {
             bw.write(builder.toString());
         } catch (IOException ex) {
-
             System.out.println(ex.getMessage());
         }
     }
