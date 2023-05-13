@@ -43,7 +43,7 @@ public class DataHandler {
             System.out.println(ex.getMessage());
         }
 
-        int blockSize = (int) Math.ceil(dataBuilder.length() / Math.ceil(dataBuilder.length() / 700.0));
+        int blockSize = (int) Math.ceil(dataBuilder.length() / Math.ceil(dataBuilder.length() / 500.0));
         int counter = 0;
         while (counter < dataBuilder.length()) {
             char[] chars = new char[blockSize];
@@ -60,7 +60,7 @@ public class DataHandler {
         ArrayList<BufferedImage> images = new ArrayList<>();
         for (String s : dataSets) {
             String fileName = "result/qr" + dataSets.indexOf(s) + ".png";
-            images.add(QrHandler.createQrCode(s, 300, "png", fileName));
+            images.add(QrHandler.createQrCode(s, 250, "png", fileName));
         }
         return images;
     }

@@ -16,7 +16,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.Hashtable;
 
 public class QrHandler {
@@ -48,11 +47,10 @@ public class QrHandler {
                     BufferedImage.TYPE_INT_RGB);
             image.createGraphics();
             Graphics2D graphics = (Graphics2D) image.getGraphics();
-            Font font = new Font(Font.SANS_SERIF, Font.PLAIN, 18);
-            graphics.setFont(font);
             graphics.setColor(Color.white);
             graphics.fillRect(0, 0, matrixWidth, matrixWidth);
-            Color mainColor = new Color(30, 70, 153);
+//            Color mainColor = new Color(30, 70, 153);
+            Color mainColor = new Color(1, 1, 1);
             graphics.setColor(mainColor);
             // Write message under the QR-code
 
@@ -124,8 +122,7 @@ public class QrHandler {
         try {
             LuminanceSource source = new BufferedImageLuminanceSource(image);
             BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
-            Result result = new MultiFormatReader().decode(bitmap, Collections.EMPTY_MAP);
-            return result;
+            return new MultiFormatReader().decode(bitmap);
         } catch (NotFoundException nfe) {
             nfe.printStackTrace();
             return null;
