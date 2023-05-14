@@ -7,6 +7,7 @@ import org.telegram.telegrambots.extensions.bots.commandbot.commands.IBotCommand
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import org.telegram.telegrambots.meta.api.methods.send.SendVideo;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -48,6 +49,27 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
         return instance;
     }
 
+    private void setRegisteredCommands() {
+        registeredCommands = getRegisteredCommands()
+                .stream()
+                .map(IBotCommand::getCommandIdentifier)
+                .collect(Collectors.toList());
+    }
+
+    private void registerCommands() {
+        register(new CommandStart());
+        register(new CommandHelp());
+        setRegisteredCommands();
+    }
+
+    public void registerBot() {
+        try {
+            telegramBotsApi.registerBot(this);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException("Telegram API initialization error: " + e.getMessage());
+        }
+    }
+
     public void sendMessage(Long chatId, String message) {
         try {
             SendMessage sendMessage = SendMessage
@@ -72,6 +94,44 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
         }
     }
 
+    public void sendVideo(Long chatId, String path) {
+        try {
+            SendVideo video = new SendVideo();
+            video.setVideo(new InputFile(new File(path)));
+            video.setChatId(chatId.toString());
+            execute(video);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void processText(Update update) throws TelegramApiException, IOException, WriterException {
+        String text = update.getMessage().getText();
+        sendMessage(update.getMessage().getChatId(), "Текст");
+    }
+
+    private void processImage(Update update) throws TelegramApiException, IOException {
+        sendMessage(update.getMessage().getChatId(), "Картинка");
+    }
+
+    private void processVideo(Update update) throws TelegramApiException, IOException {
+        sendMessage(update.getMessage().getChatId(), "Видео");
+    }
+
+    private JSONObject getFileRequest(String fileId) throws IOException {
+        String fileUrl = String.format("https://api.telegram.org/bot%s/getFile?file_id=%s",
+                botSettings.getToken(),
+                fileId);
+        return IOTools.readJsonFromUrl(fileUrl);
+    }
+
+    private String getFileUrl(String fileId) throws IOException {
+        JSONObject jsonObject = getFileRequest(fileId);
+        return String.format("https://api.telegram.org/file/bot%s/%s",
+                botSettings.getToken(),
+                jsonObject.get("file_path"));
+    }
+
     @Override
     public String getBotUsername() {
         return botSettings.getUserName();
@@ -93,6 +153,8 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
             try {
                 if (update.getMessage().getPhoto() != null) {
                     processImage(update);
+                } else if (update.getMessage().getVideo() != null) {
+                    processVideo(update);
                 } else if (update.getMessage().getText() != null) {
                     if (update.getMessage().getText().matches("^/[\\w]*$")) {
                         processInvalidCommandUpdate(update);
@@ -114,48 +176,5 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
     @Override
     public void onRegister() {
         super.onRegister();
-    }
-
-    private void processText(Update update) throws TelegramApiException, IOException, WriterException {
-
-    }
-
-    private void processImage(Update update) throws TelegramApiException, IOException {
-
-    }
-
-    private JSONObject getFileRequest(String fileId) throws IOException {
-        String fileUrl = String.format("https://api.telegram.org/bot%s/getFile?file_id=%s",
-                botSettings.getToken(),
-                fileId);
-        return IOTools.readJsonFromUrl(fileUrl);
-    }
-
-    private String getFileUrl(String fileId) throws IOException {
-        JSONObject jsonObject = getFileRequest(fileId);
-        return String.format("https://api.telegram.org/file/bot%s/%s",
-                botSettings.getToken(),
-                jsonObject.get("file_path"));
-    }
-
-    private void setRegisteredCommands() {
-        registeredCommands = getRegisteredCommands()
-                .stream()
-                .map(IBotCommand::getCommandIdentifier)
-                .collect(Collectors.toList());
-    }
-
-    private void registerCommands() {
-        register(new CommandStart());
-        register(new CommandHelp());
-        setRegisteredCommands();
-    }
-
-    public void registerBot() {
-        try {
-            telegramBotsApi.registerBot(this);
-        } catch (TelegramApiException e) {
-            throw new RuntimeException("Telegram API initialization error: " + e.getMessage());
-        }
     }
 }

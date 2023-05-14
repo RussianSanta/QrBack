@@ -5,7 +5,6 @@ import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.qrcode.QRCodeWriter;
-import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -22,7 +21,7 @@ public class QrHandler {
     private static final File logoFile = new File("src/main/resources/img.jpg");
     private static FileOutputStream resultStream;
 
-    public static BufferedImage createQrCode(String content, int qrCodeSize, String imageFormat, String fileName) {
+    public static BufferedImage createQrCode(String content, int qrCodeSize, String imageFormat, String fileName, String characterSet) {
         try {
             resultStream = new FileOutputStream(fileName);
         } catch (FileNotFoundException e) {
@@ -33,8 +32,10 @@ public class QrHandler {
             // Correction level - HIGH - more chances to recover message
             Hashtable<EncodeHintType, Object> hintMap =
                     new Hashtable<>();
-            hintMap.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.H);
-            hintMap.put(EncodeHintType.CHARACTER_SET, "windows-1251");
+//            hintMap.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.H);
+            if (!characterSet.equals("")) {
+                hintMap.put(EncodeHintType.CHARACTER_SET, characterSet);
+            }
 
             // Generate QR-code
             QRCodeWriter qrCodeWriter = new QRCodeWriter();
@@ -79,15 +80,6 @@ public class QrHandler {
                     0, 0, logo.getWidth(), logo.getHeight(), null);
 
             ImageIO.write(image, imageFormat, resultStream);
-            //todo проверить, почему не работает проверка
-
-            // Check correctness of QR-code
-//            if (isQRCodeCorrect(content, image)) {
-//                ImageIO.write(image, imageFormat, resultStream);
-//                System.out.println("Your QR-code was succesfully generated.");
-//            } else {
-//                System.out.println("Sorry, your logo has broke QR-code. ");
-//            }
             return image;
         } catch (Exception ex) {
             System.out.println(ex.getMessage());
@@ -104,15 +96,6 @@ public class QrHandler {
             scaleRate = 1;
         }
         return scaleRate;
-    }
-
-    private static boolean isQRCodeCorrect(String content, BufferedImage image) {
-        boolean result = false;
-        Result qrResult = decode(image);
-        if (qrResult != null && content != null && content.equals(qrResult.getText())) {
-            result = true;
-        }
-        return result;
     }
 
     public static Result decode(BufferedImage image) {
