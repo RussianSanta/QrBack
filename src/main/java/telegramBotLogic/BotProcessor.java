@@ -1,15 +1,17 @@
 package telegramBotLogic;
 
 import com.google.zxing.WriterException;
+import handlers.DataHandler;
+import org.jcodec.api.JCodecException;
 import org.json.JSONObject;
 import org.telegram.telegrambots.extensions.bots.commandbot.TelegramLongPollingCommandBot;
 import org.telegram.telegrambots.extensions.bots.commandbot.commands.IBotCommand;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.send.SendVideo;
-import org.telegram.telegrambots.meta.api.objects.InputFile;
-import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.*;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 import telegramBotLogic.commands.CommandHelp;
@@ -17,7 +19,11 @@ import telegramBotLogic.commands.CommandStart;
 
 import javax.inject.Singleton;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.URL;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -70,7 +76,21 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
         }
     }
 
-    public void sendMessage(Long chatId, String message) {
+    private File getFileFromServer(String fileId, String fileName) throws IOException {
+        URL fileUrl = new URL(getFileUrl(fileId));
+        File downloadedFile = new File("result/downloaded/" + fileName);
+
+        FileOutputStream fos = new FileOutputStream(downloadedFile.getAbsolutePath());
+        System.out.println("Start upload");
+        ReadableByteChannel rbc = Channels.newChannel(fileUrl.openStream());
+        fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
+        fos.close();
+        rbc.close();
+
+        return downloadedFile;
+    }
+
+    private void sendMessage(Long chatId, String message) {
         try {
             SendMessage sendMessage = SendMessage
                     .builder()
@@ -105,17 +125,59 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
         }
     }
 
+    public void sendFile(Long chatId, String path) {
+        try {
+            SendDocument document = new SendDocument();
+            document.setDocument(new InputFile(new File(path)));
+            document.setChatId(chatId.toString());
+            execute(document);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void processText(Update update) throws TelegramApiException, IOException, WriterException {
         String text = update.getMessage().getText();
+        String resultPath = DataHandler.convertText(text);
         sendMessage(update.getMessage().getChatId(), "Текст");
+        sendVideo(update.getMessage().getChatId(), resultPath + "/result.mp4");
+        DataHandler.clear(resultPath);
     }
 
     private void processImage(Update update) throws TelegramApiException, IOException {
         sendMessage(update.getMessage().getChatId(), "Картинка");
+        List<PhotoSize> photoSizes = update.getMessage().getPhoto();
+
     }
 
-    private void processVideo(Update update) throws TelegramApiException, IOException {
+    private void processVideo(Update update) throws TelegramApiException, IOException, JCodecException {
         sendMessage(update.getMessage().getChatId(), "Видео");
+        Video video = update.getMessage().getVideo();
+        File file = getFileFromServer(video.getFileId(), video.getFileName());
+
+        String result = DataHandler.decode(file.getAbsolutePath());
+        if (result.contains("_F_")) {
+            String fileExtension = result.substring(3);
+            File resultFile = new File("result/decoded/result." + fileExtension);
+            sendFile(update.getMessage().getChatId(), resultFile.getAbsolutePath());
+            resultFile.delete();
+        } else {
+            sendMessage(update.getMessage().getChatId(), result);
+        }
+
+        file.delete();
+    }
+
+    private void processFile(Update update) throws IOException, TelegramApiException {
+        Document document = update.getMessage().getDocument();
+        File file = getFileFromServer(document.getFileId(), document.getFileName());
+        System.out.println(file.getAbsolutePath());
+        String resultPath = DataHandler.convertFile(file.getAbsolutePath());
+        sendMessage(update.getMessage().getChatId(), "Файл");
+        sendVideo(update.getMessage().getChatId(), resultPath + "/result.mp4");
+        DataHandler.clear(resultPath);
+
+        file.delete();
     }
 
     private JSONObject getFileRequest(String fileId) throws IOException {
@@ -151,7 +213,9 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
     public void processNonCommandUpdate(Update update) {
         if (update.hasMessage()) {
             try {
-                if (update.getMessage().getPhoto() != null) {
+                if (update.getMessage().getDocument() != null) {
+                    processFile(update);
+                } else if (update.getMessage().getPhoto() != null) {
                     processImage(update);
                 } else if (update.getMessage().getVideo() != null) {
                     processVideo(update);

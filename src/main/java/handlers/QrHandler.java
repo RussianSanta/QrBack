@@ -12,23 +12,15 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Hashtable;
 
 public class QrHandler {
     private static final File logoFile = new File("src/main/resources/img.jpg");
-    private static FileOutputStream resultStream;
 
     public static BufferedImage createQrCode(String content, int qrCodeSize, String imageFormat, String fileName, String characterSet) {
-        try {
-            resultStream = new FileOutputStream(fileName);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-
-        try {
+        try (FileOutputStream resultStream = new FileOutputStream(fileName)) {
             // Correction level - HIGH - more chances to recover message
             Hashtable<EncodeHintType, Object> hintMap =
                     new Hashtable<>();
