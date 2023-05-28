@@ -28,7 +28,7 @@ public class DataHandler {
         textFileExtensions.add("xml");
     }
 
-    private static char[] toChars(byte[] barr, int length) {
+    private char[] toChars(byte[] barr, int length) {
         char[] carr = new char[length];
         for (int i = 0; i < length; i++) {
             carr[i] = (char) barr[i];
@@ -36,7 +36,7 @@ public class DataHandler {
         return carr;
     }
 
-    private static byte[] toBytes(char[] carr) {
+    private byte[] toBytes(char[] carr) {
         byte[] barr = new byte[carr.length];
         for (int i = 0; i < carr.length; i++) {
             barr[i] = (byte) carr[i];
@@ -44,19 +44,19 @@ public class DataHandler {
         return barr;
     }
 
-    private static String getFileExtension(File file) {
+    private String getFileExtension(File file) {
         int dotPosition = file.getName().indexOf(".") + 1;
         return file.getName().substring(dotPosition);
     }
 
-    private static String makePath() {
+    private String makePath() {
         String path = "result/" + UUID.randomUUID();
         File folder = new File(path);
         if (!folder.exists()) folder.mkdir();
         return path;
     }
 
-    public static void clear(String path) {
+    public void clear(String path) {
         try {
             FileUtils.deleteDirectory(new File(path).getParentFile());
         } catch (IOException e) {
@@ -64,7 +64,7 @@ public class DataHandler {
         }
     }
 
-    private static String encode(String data, String fileExtension, String characterSet) {
+    private String encode(String data, String fileExtension, String characterSet) {
         String path = makePath();
         ArrayList<String> dataSets = prepareData(data, fileExtension);
         ArrayList<BufferedImage> images = convertDataToImages(dataSets, characterSet, path);
@@ -79,7 +79,7 @@ public class DataHandler {
         }
     }
 
-    public static String decodePhoto(String fileUrl) throws IOException {
+    public String decodePhoto(String fileUrl) throws IOException {
         File file = new File(fileUrl);
 
         ArrayList<BufferedImage> images = new ArrayList<>();
@@ -97,7 +97,7 @@ public class DataHandler {
         return result;
     }
 
-    public static String decodeVideo(String fileUrl) throws JCodecException, IOException {
+    public String decodeVideo(String fileUrl) throws JCodecException, IOException {
         File file = new File(fileUrl);
 
         ArrayList<BufferedImage> images = cutTheVideo(file);
@@ -107,11 +107,11 @@ public class DataHandler {
         return result;
     }
 
-    public static String convertText(String text) throws IOException {
+    public String convertText(String text) throws IOException {
         return encode(text, "st", "windows-1251");
     }
 
-    public static String convertFile(String fileUrl) throws FileNotFoundException {
+    public String convertFile(String fileUrl) throws FileNotFoundException {
         boolean isText = false;
         for (String s : textFileExtensions) {
             if (fileUrl.contains(s)) {
@@ -123,7 +123,7 @@ public class DataHandler {
         else return convertOtherFile(fileUrl);
     }
 
-    private static String convertTextFile(String fileUrl) {
+    private String convertTextFile(String fileUrl) {
         File file = new File(fileUrl);
         StringBuilder dataBuilder = new StringBuilder();
 
@@ -139,7 +139,7 @@ public class DataHandler {
         return encode(dataBuilder.toString(), getFileExtension(file), "windows-1251");
     }
 
-    private static String convertOtherFile(String fileUrl) throws FileNotFoundException {
+    private String convertOtherFile(String fileUrl) throws FileNotFoundException {
         File file = new File(fileUrl);
         StringBuilder dataBuilder = new StringBuilder();
 
@@ -157,7 +157,7 @@ public class DataHandler {
         return encode(dataBuilder.toString(), getFileExtension(file), "UTF-8");
     }
 
-    private static ArrayList<String> prepareData(String data, String fileExtension) {
+    private ArrayList<String> prepareData(String data, String fileExtension) {
         ArrayList<String> dataSets = new ArrayList<>();
 
         int blockSize = (int) Math.ceil(data.length() / Math.ceil(data.length() / (double) BUFFER_SIZE));
@@ -174,16 +174,15 @@ public class DataHandler {
 
     }
 
-    private static ArrayList<BufferedImage> convertDataToImages(ArrayList<String> dataSets, String characterSet, String path) {
+    private ArrayList<BufferedImage> convertDataToImages(ArrayList<String> dataSets, String characterSet, String path) {
         ArrayList<BufferedImage> images = new ArrayList<>();
         for (String s : dataSets) {
-            String fileName = path + "/frame" + dataSets.indexOf(s) + ".png";
-            images.add(QrHandler.createQrCode(s, QR_SIZE, "png", fileName, characterSet));
+            images.add(QrHandler.createQrCode(s, QR_SIZE, characterSet));
         }
         return images;
     }
 
-    private static void collectToPhoto(ArrayList<BufferedImage> images, String path) {
+    private void collectToPhoto(ArrayList<BufferedImage> images, String path) {
         BufferedImage image = images.get(0);
         File resultFile = new File(path + "/result.jpg");
         try {
@@ -193,7 +192,7 @@ public class DataHandler {
         }
     }
 
-    private static void collectToVideo(ArrayList<BufferedImage> images, String path) {
+    private void collectToVideo(ArrayList<BufferedImage> images, String path) {
         try {
             AWTSequenceEncoder encoder = AWTSequenceEncoder.createSequenceEncoder(new File(path + "/result.mp4"), 10);
             for (BufferedImage image : images) {
@@ -205,7 +204,7 @@ public class DataHandler {
         }
     }
 
-    private static ArrayList<BufferedImage> cutTheVideo(File file) throws IOException, JCodecException {
+    private ArrayList<BufferedImage> cutTheVideo(File file) throws IOException, JCodecException {
         ArrayList<BufferedImage> images = new ArrayList<>();
 
         FrameGrab grab = FrameGrab.createFrameGrab(NIOUtils.readableChannel(file));
@@ -218,7 +217,7 @@ public class DataHandler {
         return images;
     }
 
-    private static ArrayList<String> convertImagesToData(ArrayList<BufferedImage> images) throws IOException {
+    private ArrayList<String> convertImagesToData(ArrayList<BufferedImage> images) throws IOException {
         ArrayList<String> dataSets = new ArrayList<>();
         Set<Integer> collectedDataSets = new HashSet<>();
         int countOfDataSets = -1;
@@ -232,7 +231,7 @@ public class DataHandler {
                 countOfDataSets = Integer.parseInt(decodeResult.substring(0, 6));
                 numberOfDataSet = Integer.parseInt(decodeResult.substring(12, 18));
                 collectedDataSets.add(numberOfDataSet);
-                dataSets.add(decodeResult);
+                dataSets.add(numberOfDataSet, decodeResult);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -245,7 +244,7 @@ public class DataHandler {
         return dataSets;
     }
 
-    private static String collectToFile(ArrayList<String> dataSets) {
+    private String collectToFile(ArrayList<String> dataSets) {
         StringBuilder builder = new StringBuilder();
         String fileExtension = "";
 
@@ -293,7 +292,7 @@ public class DataHandler {
         }
     }
 
-    private static ArrayList<String> appendTechnicalData(ArrayList<String> dataSets, String fileExtension) {
+    private ArrayList<String> appendTechnicalData(ArrayList<String> dataSets, String fileExtension) {
         ArrayList<String> newDataSets = new ArrayList<>();
         int countOfFrames = dataSets.size();
         StringBuilder technicalDataBuilder = new StringBuilder();

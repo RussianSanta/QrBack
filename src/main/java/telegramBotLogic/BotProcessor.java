@@ -1,6 +1,5 @@
 package telegramBotLogic;
 
-import com.google.zxing.WriterException;
 import handlers.DataHandler;
 import org.jcodec.api.JCodecException;
 import org.json.JSONObject;
@@ -81,14 +80,19 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
         URL fileUrl = new URL(getFileUrl(fileId));
         File downloadedFile = new File("result/downloaded/" + fileName);
 
-        FileOutputStream fos = new FileOutputStream(downloadedFile.getAbsolutePath());
-        System.out.println("Start upload");
-        ReadableByteChannel rbc = Channels.newChannel(fileUrl.openStream());
-        fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
-        fos.close();
-        rbc.close();
+        try {
+            FileOutputStream fos = new FileOutputStream(downloadedFile.getAbsolutePath());
+            System.out.println("Start upload");
+            ReadableByteChannel rbc = Channels.newChannel(fileUrl.openStream());
+            fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
+            fos.close();
+            rbc.close();
 
-        return downloadedFile;
+            return downloadedFile;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private void sendMessage(Long chatId, String message) {
@@ -137,16 +141,17 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
         }
     }
 
-    private void processText(Update update) throws TelegramApiException, IOException, WriterException {
+    private void processText(Update update) throws IOException {
+        DataHandler dataHandler = new DataHandler();
         String text = update.getMessage().getText();
-        String resultPath = DataHandler.convertText(text);
-        sendMessage(update.getMessage().getChatId(), "Текст");
+        sendMessage(update.getMessage().getChatId(), "Принят текст, начат процесс обработки...");
+        String resultPath = dataHandler.convertText(text);
         if (resultPath.contains(".mp4")) {
             sendVideo(update.getMessage().getChatId(), resultPath);
         } else if (resultPath.contains("jpg")) {
             sendImage(update.getMessage().getChatId(), resultPath);
         }
-        DataHandler.clear(resultPath);
+        dataHandler.clear(resultPath);
     }
 
     private void processResult(String result, Update update) {
@@ -160,38 +165,51 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
         }
     }
 
-    private void processImage(Update update) throws TelegramApiException, IOException {
-        sendMessage(update.getMessage().getChatId(), "Картинка");
+    private void processImage(Update update) throws IOException {
+        sendMessage(update.getMessage().getChatId(), "Принята картинка. Начат процесс обработки...");
         List<PhotoSize> photoSizes = update.getMessage().getPhoto();
         File file = getFileFromServer(photoSizes.get(0).getFileId(), "uploadedImage.jpg");
-
-        String result = DataHandler.decodePhoto(file.getAbsolutePath());
+        if (file == null) {
+            sendMessage(update.getMessage().getChatId(), "Не удалось загрузить файл с серверов телеграмм." +
+                    " Возможно, превышен размер.");
+            return;
+        }
+        String result = new DataHandler().decodePhoto(file.getAbsolutePath());
         processResult(result, update);
-
         file.delete();
     }
 
     private void processVideo(Update update) throws TelegramApiException, IOException, JCodecException {
-        sendMessage(update.getMessage().getChatId(), "Видео");
+        sendMessage(update.getMessage().getChatId(), "Принято видео. Начат процесс обработки...");
         Video video = update.getMessage().getVideo();
         File file = getFileFromServer(video.getFileId(), video.getFileName());
-
-        String result = DataHandler.decodeVideo(file.getAbsolutePath());
+        if (file == null) {
+            sendMessage(update.getMessage().getChatId(), "Не удалось загрузить файл с серверов телеграмм." +
+                    " Возможно, превышен размер.");
+            return;
+        }
+        String result = new DataHandler().decodeVideo(file.getAbsolutePath());
         processResult(result, update);
 
         file.delete();
     }
 
     private void processFile(File file, Update update) throws FileNotFoundException {
-        String resultPath = DataHandler.convertFile(file.getAbsolutePath());
+        DataHandler dataHandler = new DataHandler();
+        String resultPath = dataHandler.convertFile(file.getAbsolutePath());
         sendVideo(update.getMessage().getChatId(), resultPath);
-        DataHandler.clear(resultPath);
+        dataHandler.clear(resultPath);
     }
 
     private void processAudio(Update update) throws IOException, TelegramApiException {
         Audio audio = update.getMessage().getAudio();
         File file = getFileFromServer(audio.getFileId(), audio.getFileName());
-        sendMessage(update.getMessage().getChatId(), "Аудио");
+        if (file == null) {
+            sendMessage(update.getMessage().getChatId(), "Не удалось загрузить файл с серверов телеграмм." +
+                    " Возможно, превышен размер.");
+            return;
+        }
+        sendMessage(update.getMessage().getChatId(), "Принято аудио. Начат процесс обработки...");
         processFile(file, update);
         file.delete();
     }
@@ -199,7 +217,12 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
     private void processDocument(Update update) throws IOException, TelegramApiException {
         Document document = update.getMessage().getDocument();
         File file = getFileFromServer(document.getFileId(), document.getFileName());
-        sendMessage(update.getMessage().getChatId(), "Файл");
+        if (file == null) {
+            sendMessage(update.getMessage().getChatId(), "Не удалось загрузить файл с серверов телеграмм." +
+                    " Возможно, превышен размер.");
+            return;
+        }
+        sendMessage(update.getMessage().getChatId(), "Принят файл. Начат процесс обработки...");
         processFile(file, update);
         file.delete();
     }

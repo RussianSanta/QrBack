@@ -11,9 +11,9 @@ public class CommandHelp extends Command {
 
     @Override
     public void processMessage(AbsSender absSender, Message message, String[] strings) {
-        message.setText("Функции чат-бота: \n" +
-                "- считывание QR-кода: для считывания QR-кода сфотографируйте код и отправьте изображение в чат \n" +
-                "- генерация QR-кода: для генерации QR-кода отправьте текст или ссылку в чат");
+        message.setText("* Чтобы зашифровать текст, напишите боту прямо в чат.\n" +
+                "* Если вы хотите зашифровать файл, приложите его через вкладку файлы.\n" +
+                "* Все полученные фото и видео бот будет пытаться расшифровать, только если они не приложены как файлы.");
         super.processMessage(absSender, message, strings);
     }
 
