@@ -239,6 +239,7 @@ public class DataHandler {
         }
 
         if (countOfDataSets != collectedDataSets.size()) {
+            System.out.println("Получено: " + collectedDataSets.size() + ". Ожидалось: " + countOfDataSets);
             throw new IOException("Ошибка при получении данных. Количество полученных блоков не совпадает с ожидаемым");
         }
         return dataSets;

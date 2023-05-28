@@ -19,6 +19,7 @@ import telegramBotLogic.commands.CommandStart;
 
 import javax.inject.Singleton;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
@@ -181,15 +182,25 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
         file.delete();
     }
 
-    private void processFile(Update update) throws IOException, TelegramApiException {
+    private void processFile(File file, Update update) throws FileNotFoundException {
+        String resultPath = DataHandler.convertFile(file.getAbsolutePath());
+        sendVideo(update.getMessage().getChatId(), resultPath);
+        DataHandler.clear(resultPath);
+    }
+
+    private void processAudio(Update update) throws IOException, TelegramApiException {
+        Audio audio = update.getMessage().getAudio();
+        File file = getFileFromServer(audio.getFileId(), audio.getFileName());
+        sendMessage(update.getMessage().getChatId(), "Аудио");
+        processFile(file, update);
+        file.delete();
+    }
+
+    private void processDocument(Update update) throws IOException, TelegramApiException {
         Document document = update.getMessage().getDocument();
         File file = getFileFromServer(document.getFileId(), document.getFileName());
-        System.out.println(file.getAbsolutePath());
-        String resultPath = DataHandler.convertFile(file.getAbsolutePath());
         sendMessage(update.getMessage().getChatId(), "Файл");
-        sendVideo(update.getMessage().getChatId(), resultPath + "/result.mp4");
-        DataHandler.clear(resultPath);
-
+        processFile(file, update);
         file.delete();
     }
 
@@ -226,8 +237,10 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
     public void processNonCommandUpdate(Update update) {
         if (update.hasMessage()) {
             try {
-                if (update.getMessage().getDocument() != null) {
-                    processFile(update);
+                if (update.getMessage().getAudio() != null) {
+                    processAudio(update);
+                } else if (update.getMessage().getDocument() != null) {
+                    processDocument(update);
                 } else if (update.getMessage().getPhoto() != null) {
                     processImage(update);
                 } else if (update.getMessage().getVideo() != null) {
