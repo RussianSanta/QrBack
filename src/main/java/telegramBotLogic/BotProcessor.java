@@ -2,6 +2,7 @@ package telegramBotLogic;
 
 import handlers.DataHandler;
 import org.jcodec.api.JCodecException;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.telegram.telegrambots.extensions.bots.commandbot.TelegramLongPollingCommandBot;
 import org.telegram.telegrambots.extensions.bots.commandbot.commands.IBotCommand;
@@ -22,8 +23,10 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -73,6 +76,21 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
             telegramBotsApi.registerBot(this);
         } catch (TelegramApiException e) {
             throw new RuntimeException("Telegram API initialization error: " + e.getMessage());
+        }
+    }
+
+    public static JSONObject readJsonFromUrl(String url) throws IOException, JSONException {
+        JSONObject jsonObject = new JSONObject(readFileFromUrl(url));
+        return jsonObject.getJSONObject("result");
+    }
+
+    private static String readFileFromUrl(String url) throws IOException, JSONException {
+        try (ReadableByteChannel channel = Channels.newChannel(new URL(url).openStream())) {
+            ByteBuffer buff = ByteBuffer.allocate(65535);
+            channel.read(buff);
+            return new String(buff.array(), StandardCharsets.UTF_8);
+        } catch (RuntimeException e) {
+            throw new IOException(String.format("Error reading resource '%s': %s", url, e.getMessage()));
         }
     }
 
@@ -231,7 +249,7 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
         String fileUrl = String.format("https://api.telegram.org/bot%s/getFile?file_id=%s",
                 botSettings.getToken(),
                 fileId);
-        return IOTools.readJsonFromUrl(fileUrl);
+        return readJsonFromUrl(fileUrl);
     }
 
     private String getFileUrl(String fileId) throws IOException {
