@@ -8,6 +8,7 @@ import org.jcodec.common.io.NIOUtils;
 import org.jcodec.common.model.Picture;
 import org.jcodec.scale.AWTUtil;
 
+import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.ArrayList;
@@ -57,7 +58,7 @@ public class DataHandler {
 
     public static void clear(String path) {
         try {
-            FileUtils.deleteDirectory(new File(path));
+            FileUtils.deleteDirectory(new File(path).getParentFile());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -67,12 +68,36 @@ public class DataHandler {
         String path = makePath();
         ArrayList<String> dataSets = prepareData(data, fileExtension);
         ArrayList<BufferedImage> images = convertDataToImages(dataSets, characterSet, path);
-        String resultFileName = collectToVideo(images, path);
-        System.out.println("Успешно зашифровано.");
-        return resultFileName;
+        if (images.size() > 1) {
+            collectToVideo(images, path);
+            System.out.println("Успешно зашифровано.");
+            return path + "/result.mp4";
+        } else {
+            collectToPhoto(images, path);
+            System.out.println("Успешно зашифровано.");
+            return path + "/result.jpg";
+        }
     }
 
-    public static String decode(String fileUrl) throws JCodecException, IOException {
+    public static String decodePhoto(String fileUrl) throws IOException {
+        File file = new File(fileUrl);
+
+        ArrayList<BufferedImage> images = new ArrayList<>();
+        BufferedImage image = new BufferedImage(300, 300, BufferedImage.TYPE_INT_ARGB);
+        try {
+            image = ImageIO.read(file);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        images.add(image);
+        System.out.println(images.size());
+        ArrayList<String> dataSets = convertImagesToData(images);
+        String result = collectToFile(dataSets);
+        System.out.println("Успешно расшифровано.");
+        return result;
+    }
+
+    public static String decodeVideo(String fileUrl) throws JCodecException, IOException {
         File file = new File(fileUrl);
 
         ArrayList<BufferedImage> images = cutTheVideo(file);
@@ -158,7 +183,17 @@ public class DataHandler {
         return images;
     }
 
-    private static String collectToVideo(ArrayList<BufferedImage> images, String path) {
+    private static void collectToPhoto(ArrayList<BufferedImage> images, String path) {
+        BufferedImage image = images.get(0);
+        File resultFile = new File(path + "/result.jpg");
+        try {
+            ImageIO.write(image, "jpg", resultFile);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void collectToVideo(ArrayList<BufferedImage> images, String path) {
         try {
             AWTSequenceEncoder encoder = AWTSequenceEncoder.createSequenceEncoder(new File(path + "/result.mp4"), 10);
             for (BufferedImage image : images) {
@@ -167,9 +202,7 @@ public class DataHandler {
             encoder.finish();
         } catch (Exception e) {
             System.out.println("Fail to generate video!");
-
         }
-        return path;
     }
 
     private static ArrayList<BufferedImage> cutTheVideo(File file) throws IOException, JCodecException {

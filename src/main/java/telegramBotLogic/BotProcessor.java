@@ -140,22 +140,15 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
         String text = update.getMessage().getText();
         String resultPath = DataHandler.convertText(text);
         sendMessage(update.getMessage().getChatId(), "Текст");
-        sendVideo(update.getMessage().getChatId(), resultPath + "/result.mp4");
+        if (resultPath.contains(".mp4")) {
+            sendVideo(update.getMessage().getChatId(), resultPath);
+        } else if (resultPath.contains("jpg")) {
+            sendImage(update.getMessage().getChatId(), resultPath);
+        }
         DataHandler.clear(resultPath);
     }
 
-    private void processImage(Update update) throws TelegramApiException, IOException {
-        sendMessage(update.getMessage().getChatId(), "Картинка");
-        List<PhotoSize> photoSizes = update.getMessage().getPhoto();
-
-    }
-
-    private void processVideo(Update update) throws TelegramApiException, IOException, JCodecException {
-        sendMessage(update.getMessage().getChatId(), "Видео");
-        Video video = update.getMessage().getVideo();
-        File file = getFileFromServer(video.getFileId(), video.getFileName());
-
-        String result = DataHandler.decode(file.getAbsolutePath());
+    private void processResult(String result, Update update) {
         if (result.contains("_F_")) {
             String fileExtension = result.substring(3);
             File resultFile = new File("result/decoded/result." + fileExtension);
@@ -164,6 +157,26 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
         } else {
             sendMessage(update.getMessage().getChatId(), result);
         }
+    }
+
+    private void processImage(Update update) throws TelegramApiException, IOException {
+        sendMessage(update.getMessage().getChatId(), "Картинка");
+        List<PhotoSize> photoSizes = update.getMessage().getPhoto();
+        File file = getFileFromServer(photoSizes.get(0).getFileId(), "uploadedImage.jpg");
+
+        String result = DataHandler.decodePhoto(file.getAbsolutePath());
+        processResult(result, update);
+
+        file.delete();
+    }
+
+    private void processVideo(Update update) throws TelegramApiException, IOException, JCodecException {
+        sendMessage(update.getMessage().getChatId(), "Видео");
+        Video video = update.getMessage().getVideo();
+        File file = getFileFromServer(video.getFileId(), video.getFileName());
+
+        String result = DataHandler.decodeVideo(file.getAbsolutePath());
+        processResult(result, update);
 
         file.delete();
     }
