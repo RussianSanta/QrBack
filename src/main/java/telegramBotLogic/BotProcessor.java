@@ -58,6 +58,21 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
         return instance;
     }
 
+    public static JSONObject readJsonFromUrl(String url) throws IOException, JSONException {
+        JSONObject jsonObject = new JSONObject(readFileFromUrl(url));
+        return jsonObject.getJSONObject("result");
+    }
+
+    private static String readFileFromUrl(String url) throws IOException, JSONException {
+        try (ReadableByteChannel channel = Channels.newChannel(new URL(url).openStream())) {
+            ByteBuffer buff = ByteBuffer.allocate(65535);
+            channel.read(buff);
+            return new String(buff.array(), StandardCharsets.UTF_8);
+        } catch (RuntimeException e) {
+            throw new IOException(String.format("Error reading resource '%s': %s", url, e.getMessage()));
+        }
+    }
+
     private void setRegisteredCommands() {
         registeredCommands = getRegisteredCommands()
                 .stream()
@@ -76,21 +91,6 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
             telegramBotsApi.registerBot(this);
         } catch (TelegramApiException e) {
             throw new RuntimeException("Telegram API initialization error: " + e.getMessage());
-        }
-    }
-
-    public static JSONObject readJsonFromUrl(String url) throws IOException, JSONException {
-        JSONObject jsonObject = new JSONObject(readFileFromUrl(url));
-        return jsonObject.getJSONObject("result");
-    }
-
-    private static String readFileFromUrl(String url) throws IOException, JSONException {
-        try (ReadableByteChannel channel = Channels.newChannel(new URL(url).openStream())) {
-            ByteBuffer buff = ByteBuffer.allocate(65535);
-            channel.read(buff);
-            return new String(buff.array(), StandardCharsets.UTF_8);
-        } catch (RuntimeException e) {
-            throw new IOException(String.format("Error reading resource '%s': %s", url, e.getMessage()));
         }
     }
 
@@ -148,7 +148,7 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
         }
     }
 
-    public void sendFile(Long chatId, String path) {
+    public void sendDocument(Long chatId, String path) {
         try {
             SendDocument document = new SendDocument();
             document.setDocument(new InputFile(new File(path)));
@@ -163,7 +163,7 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
         DataHandler dataHandler = new DataHandler();
         String text = update.getMessage().getText();
         sendMessage(update.getMessage().getChatId(), "Принят текст, начат процесс обработки...");
-        String resultPath = dataHandler.convertText(text);
+        String resultPath = dataHandler.convertText(text, null);
         if (resultPath.contains(".mp4")) {
             sendVideo(update.getMessage().getChatId(), resultPath);
         } else if (resultPath.contains("jpg")) {
@@ -176,7 +176,7 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
         if (result.contains("_F_")) {
             String fileExtension = result.substring(3);
             File resultFile = new File("result/decoded/result." + fileExtension);
-            sendFile(update.getMessage().getChatId(), resultFile.getAbsolutePath());
+            sendDocument(update.getMessage().getChatId(), resultFile.getAbsolutePath());
             resultFile.delete();
         } else {
             sendMessage(update.getMessage().getChatId(), result);
@@ -214,7 +214,7 @@ public class BotProcessor extends TelegramLongPollingCommandBot {
 
     private void processFile(File file, Update update) throws FileNotFoundException {
         DataHandler dataHandler = new DataHandler();
-        String resultPath = dataHandler.convertFile(file.getAbsolutePath());
+        String resultPath = dataHandler.convertFile(file.getAbsolutePath(), null);
         sendVideo(update.getMessage().getChatId(), resultPath);
         dataHandler.clear(resultPath);
     }

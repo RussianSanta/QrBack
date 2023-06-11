@@ -17,6 +17,7 @@ import java.util.Set;
 import java.util.UUID;
 
 public class DataHandler {
+    private static final int FPS = 10;
     private static final int BUFFER_SIZE = 512;
     private static final int QR_SIZE = 512;
     private static final ArrayList<String> textFileExtensions = new ArrayList<>();
@@ -64,8 +65,13 @@ public class DataHandler {
         }
     }
 
-    private String encode(String data, String fileExtension, String characterSet) {
-        String path = makePath();
+    private String encode(String data, String fileExtension, String characterSet, String customPath) {
+        String path;
+        if (customPath == null) {
+            path = makePath();
+        } else {
+            path = customPath;
+        }
         ArrayList<String> dataSets = prepareData(data, fileExtension);
         ArrayList<BufferedImage> images = convertDataToImages(dataSets, characterSet, path);
         if (images.size() > 1) {
@@ -107,11 +113,11 @@ public class DataHandler {
         return result;
     }
 
-    public String convertText(String text) throws IOException {
-        return encode(text, "st", "windows-1251");
+    public String convertText(String text, String customPath) throws IOException {
+        return encode(text, "st", "windows-1251", customPath);
     }
 
-    public String convertFile(String fileUrl) throws FileNotFoundException {
+    public String convertFile(String fileUrl, String customPath) {
         boolean isText = false;
         for (String s : textFileExtensions) {
             if (fileUrl.contains(s)) {
@@ -119,11 +125,11 @@ public class DataHandler {
                 break;
             }
         }
-        if (isText) return convertTextFile(fileUrl);
-        else return convertOtherFile(fileUrl);
+        if (isText) return convertTextFile(fileUrl, customPath);
+        else return convertOtherFile(fileUrl, customPath);
     }
 
-    private String convertTextFile(String fileUrl) {
+    private String convertTextFile(String fileUrl, String customPath) {
         File file = new File(fileUrl);
         StringBuilder dataBuilder = new StringBuilder();
 
@@ -136,10 +142,10 @@ public class DataHandler {
             e.printStackTrace();
         }
 
-        return encode(dataBuilder.toString(), getFileExtension(file), "windows-1251");
+        return encode(dataBuilder.toString(), getFileExtension(file), "windows-1251", customPath);
     }
 
-    private String convertOtherFile(String fileUrl) throws FileNotFoundException {
+    private String convertOtherFile(String fileUrl, String customPath) {
         File file = new File(fileUrl);
         StringBuilder dataBuilder = new StringBuilder();
 
@@ -154,10 +160,11 @@ public class DataHandler {
             e.printStackTrace();
         }
 
-        return encode(dataBuilder.toString(), getFileExtension(file), "UTF-8");
+        return encode(dataBuilder.toString(), getFileExtension(file), "UTF-8", customPath);
     }
 
     private ArrayList<String> prepareData(String data, String fileExtension) {
+        data = new CryptoHandler().encryptData(data);
         ArrayList<String> dataSets = new ArrayList<>();
 
         int blockSize = (int) Math.ceil(data.length() / Math.ceil(data.length() / (double) BUFFER_SIZE));
@@ -194,7 +201,7 @@ public class DataHandler {
 
     private void collectToVideo(ArrayList<BufferedImage> images, String path) {
         try {
-            AWTSequenceEncoder encoder = AWTSequenceEncoder.createSequenceEncoder(new File(path + "/result.mp4"), 10);
+            AWTSequenceEncoder encoder = AWTSequenceEncoder.createSequenceEncoder(new File(path + "/result.mp4"), FPS);
             for (BufferedImage image : images) {
                 encoder.encodeImage(image);
             }
@@ -259,6 +266,10 @@ public class DataHandler {
         String resultFileName = "result/decoded/result." + fileExtension;
 
         String resultText = builder.toString();
+        if ((byte) resultText.toCharArray()[resultText.length() - 1] == 0) {
+            resultText = resultText.substring(0, resultText.length() - 1);
+        }
+        resultText = new CryptoHandler().decryptData(resultText);
         if (textFileExtensions.contains(fileExtension)) {
             System.out.println("Расшифровка в текстовый файл");
             try (BufferedWriter bw = new BufferedWriter(new FileWriter(resultFileName))) {

@@ -1,7 +1,6 @@
 package telegramBotLogic;
 
 import lombok.Data;
-import org.telegram.telegrambots.meta.TelegramBotsApi;
 
 import javax.inject.Singleton;
 import java.io.IOException;
@@ -17,7 +16,6 @@ public class BotSettings {
     private Properties properties;
     private String token;
     private String userName;
-    private TelegramBotsApi telegramBotsApi;
 
     {
         try {
